@@ -2,7 +2,8 @@ const { Client } = require("@notionhq/client");
 const _redis = require("redis");
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
-const redis = _redis.createClient(process.env.REDISCLOUD_URL, {
+const redis = _redis.createClient({
+  url: process.env.REDISCLOUD_URL,
   no_ready_check: true,
 });
 
@@ -12,7 +13,9 @@ redis.on("error", (err) => {
 
 async function getPageCount(logger) {
   await redis.connect();
-  return await redis.get("page-count");
+  const count = await redis.get("page-count");
+  await redis.disconnect();
+  return count;
 }
 
 async function loadNotionData(logger) {
@@ -53,6 +56,11 @@ async function loadNotionData(logger) {
   });
 
   await Promise.all(requests);
+  try {
+    await redis.disconnect();
+  } catch (err) {
+    logger.warning("Unable to disconnect from redis", err);
+  }
 }
 
 async function getSections(pageID, pageTitle, logger) {
