@@ -2,7 +2,7 @@ require("polyfill-object.fromentries");
 const { App } = require("@slack/bolt");
 const { Client } = require("@notionhq/client");
 const chunk = require("lodash.chunk");
-const { getPageCount } = require("./data.js");
+const { getPageCount, getSections } = require("./data.js");
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -283,8 +283,8 @@ async function refreshHome(client, logger, userID) {
 
     const completedItems = new Set();
 
-    SECTIONS.forEach((section, sectionName) => {
-      logger.info(`== ${sectionName}`);
+    getSections(logger).forEach((section) => {
+      logger.info(`== ${section.ame}`);
 
       const options = section.todos.map((todo, i) => {
         let [text, description] = todo.text.split("\n");

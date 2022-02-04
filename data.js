@@ -11,6 +11,32 @@ redis.on("error", (err) => {
   console.log("Redis error", err);
 });
 
+class Section {
+  id;
+  name;
+
+  constructor(name, { id = null, pageID = null, todos = [] } = {}) {
+    this.name = name;
+    this.id = id;
+    // TODO: should this be copied based on usecases?
+    this.todos = todos;
+    this.pageID = pageID;
+  }
+}
+
+class TODO {
+  id;
+  text;
+  complete = false;
+
+  constructor(text, { complete = false, id = null, sectionID = null } = {}) {
+    this.text = text;
+    this.complete = complete;
+    this.id = id;
+    this.sectionID = sectionID;
+  }
+}
+
 async function getPageCount(logger) {
   await redis.connect();
   const count = await redis.get("page-count");
@@ -18,9 +44,61 @@ async function getPageCount(logger) {
   return parseInt(count);
 }
 
+async function getSection(sectionName, logger) {
+  await redis.connect();
+  const section = await redis.hGetAll(`section-${sectionName}`);
+  logger.info(`Fetched section ${sectionName} from redis`, section);
+  await redis.disconnect();
+  return section;
+}
+
+async function getSections(logger) {
+  await redis.connect();
+
+  const todoIDs = await redis.sMembers("todos");
+  const sectionIDs = new Set();
+  const todoPromises = todoIDs.map(async (todoID) => {
+    const key = `todo-${todoID}`;
+    const todoData = await redis.hGetAll(key);
+
+    const todo = new TODO(todoData.text, {
+      id: todoData.id,
+      complete: todoData.complete === "true",
+      sectionID: todoData.sectionID,
+    });
+
+    sectionIDs.add(todoData.sectionID);
+
+    return Promise.resolve([todoID, todo]);
+  });
+
+  const todosByID = new Map(await Promise.all(todoPromises));
+  const sectionPromises = Array.from(sectionIDs).map(async (sectionID) => {
+    const key = `section-${sectionID}`;
+    const sectionData = await redis.hGetAll(key);
+
+    const todoIDs = await redis.lRange(`section-todos-${sectionID}`, 0, -1);
+    const todos = todoIDs.map((todoID) => {
+      return todosByID.get(todoID);
+    });
+
+    const section = new Section(sectionData.name, {
+      id: sectionData.id,
+      pageID: sectionData.pageID,
+      todos,
+    });
+    return section;
+  });
+
+  const sections = await Promise.all(sectionPromises);
+
+  await redis.disconnect();
+
+  return sections;
+}
+
 async function loadNotionData(logger) {
   const pages = new Map();
-  const SECTIONS = new Map();
 
   const response = await notion.search({
     filter: {
@@ -32,7 +110,8 @@ async function loadNotionData(logger) {
 
   logger.info("Loading pages from Notion...");
 
-  response.results.forEach((page) => {
+  let pageCount = 0;
+  const requests = response.results.map(async (page) => {
     // This destructuring is very complex, but so is the response object from Notion, so...
     // TODO: documenting the structure here would be helpful
     const {
@@ -42,18 +121,12 @@ async function loadNotionData(logger) {
         },
       ],
     } = page.properties.title;
-    pages.set(page.id, pageTitle);
+    pageCount += 1;
+    return await syncPageData(page.id, pageTitle, logger);
   });
 
   await redis.connect();
-  await redis.set("page-count", pages.size);
-
-  const requests = Array.from(pages.entries(), async ([pageID, pageTitle]) => {
-    const newSections = await getSections(pageID, pageTitle, logger);
-    for (const [sectionName, sectionData] of newSections.entries()) {
-      redis.hSet(`section-${sectionName}`, sectionData);
-    }
-  });
+  await redis.set("page-count", pageCount);
 
   await Promise.all(requests);
   try {
@@ -63,9 +136,7 @@ async function loadNotionData(logger) {
   }
 }
 
-async function getSections(pageID, pageTitle, logger) {
-  const sections = new Map();
-
+async function syncPageData(pageID, pageTitle, logger) {
   const response = await notion.blocks.children.list({
     block_id: pageID,
     page_size: 100,
@@ -73,8 +144,8 @@ async function getSections(pageID, pageTitle, logger) {
 
   logger.info(`Processing children for page '${pageTitle}'`);
 
-  var currentSection;
-  response.results.forEach((result) => {
+  var currentSectionID;
+  const promises = response.results.map(async (result) => {
     if (result.type.startsWith("heading")) {
       const t = result.type;
       const {
@@ -84,29 +155,38 @@ async function getSections(pageID, pageTitle, logger) {
           },
         ],
       } = result[t];
-      currentSection = sectionName;
-      sections.set(currentSection, {
-        id: result.id,
-        page: { id: pageID, title: pageTitle },
-        name: sectionName,
-        todos: [],
-      });
+      currentSectionID = result.id;
 
       logger.info(`== ${sectionName}`);
+      return Promise.all([
+        redis.hSet(`section-${result.id}`, {
+          name: sectionName,
+          id: result.id,
+          pageID,
+        }),
+        redis.del(`section-todos-${result.id}`),
+        redis.sAdd("sections", result.id),
+      ]);
     } else if (result.type === "to_do") {
       const {
         to_do: { checked, text: textChunks },
       } = result;
       const text = textChunks.map((chunk) => chunk.plain_text).join("");
 
-      const todo = { id: result.id, checked, text };
-      sections.get(currentSection).todos.push(todo);
-
-      logger.info(`${todo.checked ? "✅" : "◻️"} ${text}`);
+      return Promise.all([
+        redis.hSet(`todo-${result.id}`, {
+          text,
+          complete: checked,
+          id: result.id,
+          sectionID: currentSectionID,
+        }),
+        redis.lPush(`section-todos-${currentSectionID}`, result.id),
+        redis.sAdd("todos", result.id),
+      ]);
     }
   });
 
-  return sections;
+  return Promise.all(promises);
 }
 
-module.exports = { loadNotionData, getPageCount };
+module.exports = { loadNotionData, getPageCount, getSection, getSections };
