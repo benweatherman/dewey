@@ -284,7 +284,7 @@ async function refreshHome(client, logger, userID) {
     const completedItems = new Set();
     const sections = await getSections(logger);
     sections.forEach((section) => {
-      logger.info(`== ${section.ame}`);
+      logger.info(`== ${section.name}`);
 
       const options = section.todos.map((todo, i) => {
         let [text, description] = todo.text.split("\n");
@@ -353,13 +353,13 @@ async function refreshHome(client, logger, userID) {
             type: "header",
             text: {
               type: "plain_text",
-              text: sectionName,
+              text: section.name,
               emoji: true,
             },
           },
           {
             type: "actions",
-            block_id: `todo-section-${sectionName}`,
+            block_id: `todo-section-${section.name}`,
             elements,
           },
           { type: "divider" },
