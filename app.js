@@ -2,15 +2,18 @@ require("polyfill-object.fromentries");
 const { App } = require("@slack/bolt");
 const { Client } = require("@notionhq/client");
 const chunk = require("lodash.chunk");
-const { getPageCount, getSections, loadNotionData } = require("./data.js");
+const {
+  getPageCount,
+  getSections,
+  loadNotionData,
+  getSection,
+} = require("./data.js");
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET,
 });
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
-
-const SECTIONS = new Map();
 
 app.action("refresh_todo_ui", async ({ ack, body, client, logger }) => {
   logger.info("Refreshing TODO UI");
@@ -82,16 +85,16 @@ app.action("add_todo", async ({ ack, body, payload, client, logger }) => {
   logger.info("Adding TODO");
   await ack();
 
-  const sectionName = payload.block_id.replace(/^todo-section-/, "");
-  const section = SECTIONS.get(sectionName);
-  logger.info(`Adding TODO in ${sectionName}`);
+  const sectionID = payload.block_id.replace(/^todo-section-/, "");
+  const section = await getSection(sectionID, logger);
+  logger.info(`Adding TODO in ${section.name}`);
 
   try {
     const result = await client.views.open({
       trigger_id: body.trigger_id,
       view: {
         type: "modal",
-        callback_id: `add_todo_view-${sectionName}`,
+        callback_id: `add_todo_view-${section.name}`,
         title: {
           type: "plain_text",
           // TODO Can only be 25 characters
@@ -157,9 +160,9 @@ app.action(/^toggle_todo/, async ({ ack, body, payload, client, logger }) => {
 
   await loadNotionData(logger);
 
-  const sectionName = payload.block_id.replace(/^todo-section-/, "");
-  const section = SECTIONS.get(sectionName);
-  logger.info(`TODO toggled in ${sectionName}`);
+  const sectionID = payload.block_id.replace(/^todo-section-/, "");
+  const section = await getSection(sectionID);
+  logger.info(`TODO toggled in ${sectionID}`);
 
   const selectedIDs = new Set(
     payload.selected_options.map((option) => {
@@ -359,7 +362,7 @@ async function refreshHome(client, logger, userID) {
           },
           {
             type: "actions",
-            block_id: `todo-section-${section.name}`,
+            block_id: `todo-section-${section.id}`,
             elements,
           },
           { type: "divider" },
