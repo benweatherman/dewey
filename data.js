@@ -8,7 +8,7 @@ const redis = _redis.createClient({
 });
 
 redis.on("error", (err) => {
-  console.log("Redis error", err);
+  console.error("Redis error", err);
 });
 
 class Section {
@@ -18,7 +18,6 @@ class Section {
   constructor(name, { id = null, pageID = null, todos = [] } = {}) {
     this.name = name;
     this.id = id;
-    // TODO: should this be copied based on usecases?
     this.todos = todos;
     this.pageID = pageID;
   }
@@ -144,7 +143,7 @@ async function loadNotionData(logger) {
       ],
     } = page.properties.title;
     pageCount += 1;
-    return await syncPageData(page.id, pageTitle, logger);
+    return syncPageData(page.id, pageTitle, logger);
   });
 
   await redis.connect();
