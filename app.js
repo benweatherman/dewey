@@ -384,7 +384,6 @@ async function refreshHome(client, logger, userID) {
 (async () => {
   // TODO Can I get the logger from app? Looks like it's marked private currently
   const logger = console;
-  await loadNotionData(logger);
   await app.start(process.env.PORT || 3000);
 
   logger.info("🦕 Dewey slack app is running!");
