@@ -161,7 +161,7 @@ app.action(/^toggle_todo/, async ({ ack, body, payload, client, logger }) => {
   await loadNotionData(logger);
 
   const sectionID = payload.block_id.replace(/^todo-section-/, "");
-  const section = await getSection(sectionID);
+  const section = await getSection(sectionID, logger);
   logger.info(`TODO toggled in ${sectionID}`);
 
   const selectedIDs = new Set(
