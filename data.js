@@ -91,6 +91,7 @@ async function getSections(logger) {
   });
 
   const sections = await Promise.all(sectionPromises);
+  sections.reverse();
 
   await redis.disconnect();
 
