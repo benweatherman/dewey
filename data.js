@@ -11,6 +11,7 @@ redis.on("error", (err) => {
 });
 
 async function getPageCount(logger) {
+  await redis.connect();
   return await redis.get("page-count");
 }
 
@@ -41,6 +42,7 @@ async function loadNotionData(logger) {
     pages.set(page.id, pageTitle);
   });
 
+  await redis.connect();
   await redis.set("page-count", pages.size);
 
   const requests = Array.from(pages.entries(), async ([pageID, pageTitle]) => {
