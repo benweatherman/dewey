@@ -5,11 +5,15 @@ const notion = new Client({ auth: process.env.NOTION_API_KEY });
 const redis = _redis.createClient({ url: process.env.REDISTOGO_URL });
 
 redis.on("error", (err) => {
-  console.log("Error " + err);
+  console.log("Redis error", err);
 });
 
+async function getPageCount(logger) {
+  return await redis.get("page-count");
+}
+
 async function loadNotionData(logger) {
-  const PAGES = new Map();
+  const pages = new Map();
   const SECTIONS = new Map();
 
   const response = await notion.search({
@@ -32,52 +36,65 @@ async function loadNotionData(logger) {
         },
       ],
     } = page.properties.title;
-    PAGES.set(page.id, { id: page.id, title: pageTitle });
+    pages.set(page.id, pageTitle);
   });
 
-  const requests = Array.from(PAGES.entries(), async ([pageID, page]) => {
-    const response = await notion.blocks.children.list({
-      block_id: pageID,
-      page_size: 100,
-    });
+  await redis.set("page-count", pages.size);
 
-    logger.info(`Processing children for page '${page.title}'`);
-
-    var currentSection;
-    response.results.forEach((result) => {
-      if (result.type.startsWith("heading")) {
-        const t = result.type;
-        const {
-          text: [
-            {
-              text: { content: sectionName },
-            },
-          ],
-        } = result[t];
-        currentSection = sectionName;
-        SECTIONS.set(currentSection, {
-          id: result.id,
-          page: page,
-          name: sectionName,
-          todos: [],
-        });
-
-        logger.info(`== ${sectionName}`);
-      } else if (result.type === "to_do") {
-        const {
-          to_do: { checked, text: textChunks },
-        } = result;
-        const text = textChunks.map((chunk) => chunk.plain_text).join("");
-
-        const todo = { id: result.id, checked, text };
-        SECTIONS.get(currentSection).todos.push(todo);
-
-        logger.info(`${todo.checked ? "✅" : "◻️"} ${text}`);
-      }
-    });
+  const requests = Array.from(pages.entries(), async ([pageID, pageTitle]) => {
+    const newSections = await getSections(pageID, pageTitle, logger);
+    for (const [sectionName, sectionData] of newSections.entries()) {
+      redis.hSet(`section-${sectionName}`, sectionData);
+    }
   });
 
   await Promise.all(requests);
 }
 
-module.exports = { loadNotionData };
+async function getSections(pageID, pageTitle, logger) {
+  const sections = new Map();
+
+  const response = await notion.blocks.children.list({
+    block_id: pageID,
+    page_size: 100,
+  });
+
+  logger.info(`Processing children for page '${pageTitle}'`);
+
+  var currentSection;
+  response.results.forEach((result) => {
+    if (result.type.startsWith("heading")) {
+      const t = result.type;
+      const {
+        text: [
+          {
+            text: { content: sectionName },
+          },
+        ],
+      } = result[t];
+      currentSection = sectionName;
+      sections.set(currentSection, {
+        id: result.id,
+        page: { id: pageID, title: pageTitle },
+        name: sectionName,
+        todos: [],
+      });
+
+      logger.info(`== ${sectionName}`);
+    } else if (result.type === "to_do") {
+      const {
+        to_do: { checked, text: textChunks },
+      } = result;
+      const text = textChunks.map((chunk) => chunk.plain_text).join("");
+
+      const todo = { id: result.id, checked, text };
+      sections.get(currentSection).todos.push(todo);
+
+      logger.info(`${todo.checked ? "✅" : "◻️"} ${text}`);
+    }
+  });
+
+  return sections;
+}
+
+module.exports = { loadNotionData, getPageCount };

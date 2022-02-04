@@ -2,6 +2,7 @@ require("polyfill-object.fromentries");
 const { App } = require("@slack/bolt");
 const { Client } = require("@notionhq/client");
 const chunk = require("lodash.chunk");
+const { getPageCount } = require("./data.js");
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -9,7 +10,6 @@ const app = new App({
 });
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
-const PAGES = new Map();
 const SECTIONS = new Map();
 
 app.action("refresh_todo_ui", async ({ ack, body, client, logger }) => {
@@ -225,7 +225,7 @@ async function refreshHome(client, logger, userID) {
       },
     ];
 
-    const pageCount = PAGES.size;
+    const pageCount = await getPageCount();
 
     if (pageCount === 0) {
       blocks.push(
