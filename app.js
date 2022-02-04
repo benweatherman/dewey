@@ -1,11 +1,18 @@
 require("polyfill-object.fromentries");
 const { App } = require("@slack/bolt");
 const { Client } = require("@notionhq/client");
-var chunk = require("lodash.chunk");
+const chunk = require("lodash.chunk");
+const _redis = require('redis');
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET,
+});
+const notion = new Client({ auth: process.env.NOTION_API_KEY });
+const redis = _redis.createClient({url: process.env.REDISTOGO_URL});
+
+redis.on('error', err => {
+    console.log('Error ' + err);
 });
 
 const PAGES = new Map();
@@ -15,7 +22,6 @@ async function loadNotionData(logger) {
   PAGES.clear();
   SECTIONS.clear();
 
-  const notion = new Client({ auth: process.env.NOTION_API_KEY });
   const response = await notion.search({
     filter: {
       value: "page",
@@ -105,9 +111,6 @@ app.action("refresh_todo_data", async ({ ack, body, client, logger }) => {
 app.view(/^add_todo_view/, async ({ ack, payload, body, client, logger }) => {
   logger.info("Handling TODO view submission");
   await ack();
-
-  // TODO Be best
-  const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
   const sectionName = payload.callback_id.replace(/add_todo_view-/, "");
   const section = SECTIONS.get(sectionName);
@@ -231,9 +234,6 @@ app.action(/^toggle_todo/, async ({ ack, body, payload, client, logger }) => {
   await ack();
   
   await loadNotionData(logger);
-
-  // TODO Be better
-  const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
   const sectionName = payload.block_id.replace(/^todo-section-/, "");
   const section = SECTIONS.get(sectionName);

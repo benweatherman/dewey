@@ -34,3 +34,9 @@ It's marked as Beta, which seems generous.
 Notes about the slack integration
 
 - Only allowed 10 `options` (TODOs) when building blocks
+
+
+Development/deployment niceties
+---------------
+Dump heroku env vars `heroku config --app dewey-dino --shell > .env`
+Running locally loading `.env` `env $(grep -v '^#' .env | xargs) npm run start`

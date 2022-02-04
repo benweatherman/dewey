@@ -7,10 +7,11 @@
     "start": "node app.js"
   },
   "dependencies": {
-    "@slack/bolt": "3.9.0",
     "@notionhq/client": "0.4.13",
+    "@slack/bolt": "3.9.0",
+    "lodash.chunk": "4.2.0",
     "polyfill-object.fromentries": "1.0.1",
-    "lodash.chunk": "4.2.0"
+    "redis": "4.0.3"
   },
   "engines": {
     "node": "16.x"
