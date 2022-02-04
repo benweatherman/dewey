@@ -17,6 +17,6 @@ It's marked as Beta, which seems generous.
 
 ## Development/deployment niceties
 
-Dump heroku env vars `heroku config --app dewey-dino --shell > .env`
-Running locally loading `.env` `env $(grep -v '^#' .env | xargs) npm run start`
-Running locally with Heroku `heroku local --port 3000`
+- Dump heroku env vars `heroku config --app dewey-dino --shell > .env`
+- Running locally loading `.env` `env $(grep -v '^#' .env | xargs) npm run start`
+- Running locally with Heroku `heroku local --port 3000`
