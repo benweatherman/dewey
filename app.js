@@ -53,7 +53,7 @@ app.view(/^add_todo_view/, async ({ ack, payload, body, client, logger }) => {
     },
   } = payload;
 
-  logger.info(`Adding TODO in ${sectionName}: ${text}`);
+  logger.info(`Adding TODO in ${section.name}: ${text}`);
   let content = text;
   if (details && details.length) {
     content += `\n${details}`;
