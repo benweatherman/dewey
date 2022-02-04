@@ -2,7 +2,7 @@ require("polyfill-object.fromentries");
 const { App } = require("@slack/bolt");
 const { Client } = require("@notionhq/client");
 const chunk = require("lodash.chunk");
-const { getPageCount, getSections } = require("./data.js");
+const { getPageCount, getSections, loadNotionData } = require("./data.js");
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
