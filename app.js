@@ -2,18 +2,13 @@ require("polyfill-object.fromentries");
 const { App } = require("@slack/bolt");
 const { Client } = require("@notionhq/client");
 const chunk = require("lodash.chunk");
-const _redis = require('redis');
+const { loadNotionData } = require("./data");
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET,
 });
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
-const redis = _redis.createClient({url: process.env.REDISTOGO_URL});
-
-redis.on('error', err => {
-    console.log('Error ' + err);
-});
 
 const PAGES = new Map();
 const SECTIONS = new Map();
@@ -44,7 +39,7 @@ async function loadNotionData(logger) {
     } = page.properties.title;
     PAGES.set(page.id, { id: page.id, title: pageTitle, children: [] });
   });
-  
+
   const requests = Array.from(PAGES.entries(), async ([pageID, page]) => {
     const response = await notion.blocks.children.list({
       block_id: pageID,
@@ -71,8 +66,8 @@ async function loadNotionData(logger) {
           name: sectionName,
           todos: [],
         });
-        
-        logger.info(`== ${sectionName}`)
+
+        logger.info(`== ${sectionName}`);
       } else if (result.type === "to_do") {
         const {
           to_do: { checked, text: textChunks },
@@ -81,12 +76,12 @@ async function loadNotionData(logger) {
 
         const todo = { id: result.id, checked, text };
         SECTIONS.get(currentSection).todos.push(todo);
-        
+
         logger.info(`${todo.checked ? "✅" : "◻️"} ${text}`);
       }
     });
   });
-  
+
   await Promise.all(requests);
 }
 
@@ -232,7 +227,7 @@ app.action("add_todo", async ({ ack, body, payload, client, logger }) => {
 app.action(/^toggle_todo/, async ({ ack, body, payload, client, logger }) => {
   logger.info("Toggling TODO");
   await ack();
-  
+
   await loadNotionData(logger);
 
   const sectionName = payload.block_id.replace(/^todo-section-/, "");
@@ -272,7 +267,7 @@ app.action(/^toggle_todo/, async ({ ack, body, payload, client, logger }) => {
     //      {"object":"error","status":409,"code":"conflict_error","message":"Conflict occurred while saving. Please try again."}
     logger.error("Error updating to_do in notion", err);
   }
-  
+
   await refreshHome(client, logger, body.user.id);
 
   logger.info("Done toggling TODO");
@@ -360,7 +355,7 @@ async function refreshHome(client, logger, userID) {
     blocks.push({ type: "divider" });
 
     const completedItems = new Set();
-    
+
     SECTIONS.forEach((section, sectionName) => {
       logger.info(`== ${sectionName}`);
 
@@ -373,7 +368,7 @@ async function refreshHome(client, logger, userID) {
           if (description) {
             description = `~${description.trim()}~`;
           }
-          
+
           // TODO This is kinda hacky
           completedItems.add(value);
         }
@@ -402,8 +397,12 @@ async function refreshHome(client, logger, userID) {
         };
 
         const initial_options = optionChunk.filter((option) => {
-          logger.info(`${option.text.text} is initial? ${completedItems.has(option.value)}`);
-          return completedItems.has(option.value)
+          logger.info(
+            `${option.text.text} is initial? ${completedItems.has(
+              option.value
+            )}`
+          );
+          return completedItems.has(option.value);
         });
         // If an empty array is used, slack generates the following error:
         // [ERROR] must be one of the provided options [json-pointer:view/blocks/4/elements/0/initial_options]
@@ -461,5 +460,5 @@ async function refreshHome(client, logger, userID) {
   await loadNotionData(logger);
   await app.start(process.env.PORT || 3000);
 
-  logger.info("⚡️ Bolt app is running!");
+  logger.info("🦕 Dewey slack app is running!");
 })();
