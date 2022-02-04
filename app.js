@@ -39,7 +39,7 @@ app.view(/^add_todo_view/, async ({ ack, payload, body, client, logger }) => {
 
   const sectionID = payload.callback_id.replace(/add_todo_view-/, "");
   console.log("handling section add", sectionID);
-  const section = await getSection(sectionID);
+  const section = await getSection(sectionID, logger);
   const {
     state: {
       values: {
