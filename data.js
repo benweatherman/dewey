@@ -15,7 +15,7 @@ async function getPageCount(logger) {
   await redis.connect();
   const count = await redis.get("page-count");
   await redis.disconnect();
-  return count;
+  return parseInt(count);
 }
 
 async function loadNotionData(logger) {
