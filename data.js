@@ -48,7 +48,7 @@ async function getSection(sectionID, logger) {
   logger.info(`Getting section info for ${sectionID}`);
   await redis.connect();
   const sectionData = await redis.hGetAll(`section-${sectionID}`);
-  const todoIDs = await redis.lRange(`section-todos-${sectionData.id}`, 0, -1);
+  const todoIDs = await redis.lRange(`section-todos-${sectionID}`, 0, -1);
   const todoPromises = todoIDs.map(async (todoID) => {
     const todoData = await redis.hGetAll(`todo-${todoID}`);
     const todo = new TODO(todoData.text, {
@@ -66,7 +66,7 @@ async function getSection(sectionID, logger) {
     todos,
   });
 
-  logger.info(`Fetched section ${sectionName} from redis`, section);
+  logger.info(`Fetched section ${section.name} from redis`, section);
   await redis.disconnect();
 
   return section;
