@@ -15,6 +15,9 @@ const app = new App({
 });
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
+/**
+ * Handles button clicks from the UI for refreshing the home tab
+ */
 app.action("refresh_todo_ui", async ({ ack, body, client, logger }) => {
   logger.info("Refreshing TODO UI");
   await ack();
@@ -24,6 +27,9 @@ app.action("refresh_todo_ui", async ({ ack, body, client, logger }) => {
   logger.info("Done refreshing TODO UI");
 });
 
+/**
+ * Handles button clicks from the UI for refreshing notion data
+ */
 app.action("refresh_todo_data", async ({ ack, body, client, logger }) => {
   logger.info("Refreshing TODO data");
   await ack();
@@ -33,6 +39,9 @@ app.action("refresh_todo_data", async ({ ack, body, client, logger }) => {
   logger.info("Done refreshing TODO data");
 });
 
+/**
+ * Handles submitting the Add TODO dialog
+ */
 app.view(/^add_todo_view/, async ({ ack, payload, body, client, logger }) => {
   logger.info("Handling TODO view submission");
   await ack();
@@ -82,6 +91,9 @@ app.view(/^add_todo_view/, async ({ ack, payload, body, client, logger }) => {
   logger.info("Done handling TODO view submission");
 });
 
+/**
+ * Handles showing the Add TODO dialog
+ */
 app.action("add_todo", async ({ ack, body, payload, client, logger }) => {
   logger.info("Adding TODO");
   await ack();
@@ -155,6 +167,9 @@ app.action("add_todo", async ({ ack, body, payload, client, logger }) => {
   logger.info("Done adding TODO");
 });
 
+/**
+ * Handles toggling TODOs via checkboxes
+ */
 app.action(/^toggle_todo/, async ({ ack, body, payload, client, logger }) => {
   logger.info("Toggling TODO");
   await ack();
@@ -204,6 +219,9 @@ app.action(/^toggle_todo/, async ({ ack, body, payload, client, logger }) => {
   logger.info("Done toggling TODO");
 });
 
+/**
+ * Handles displaying the home tab
+ */
 app.event("app_home_opened", async ({ event, client, context, logger }) => {
   logger.info(`<${event.user}> opened home`);
   await refreshHome(client, logger, event.user);

@@ -36,6 +36,11 @@ class TODO {
   }
 }
 
+/**
+ * Returns the number of pages that are being indexed
+ * @param {Logger} logger - An object for logging things
+ * @return {number} - The number of pages being indexed
+ */
 async function getPageCount(logger) {
   await redis.connect();
   const count = await redis.get("page-count");
@@ -43,6 +48,12 @@ async function getPageCount(logger) {
   return parseInt(count);
 }
 
+/**
+ * Return a Section for the given section ID
+ * @param {string} sectionID - The Notion section ID
+ * @param {Logger} logger - An object for logging things
+ * @return {Section} - The Section object for the given section ID
+ */
 async function getSection(sectionID, logger) {
   logger.info(`Getting section info for ${sectionID}`);
   await redis.connect();
@@ -71,6 +82,11 @@ async function getSection(sectionID, logger) {
   return section;
 }
 
+/**
+ * Returns all `Section`s
+ * @param {Logger} logger - An object for logging things
+ * @return {[Section]} - An array of all Sections
+ */
 async function getSections(logger) {
   await redis.connect();
 
@@ -118,9 +134,11 @@ async function getSections(logger) {
   return sections;
 }
 
+/**
+ * Load data from Notion into a datastore
+ * @param {Logger} logger - An object for logging things
+ */
 async function loadNotionData(logger) {
-  const pages = new Map();
-
   const response = await notion.search({
     filter: {
       value: "page",
@@ -157,6 +175,12 @@ async function loadNotionData(logger) {
   }
 }
 
+/**
+ * Syncs data for a given page
+ * @param {string} pageID - The Notion page ID to sync
+ * @param {string} pageTitle - The Notion page title to sync
+ * @param {Logger} logger - An object for logging things
+ */
 async function syncPageData(pageID, pageTitle, logger) {
   const response = await notion.blocks.children.list({
     block_id: pageID,
