@@ -45,6 +45,7 @@ async function getPageCount(logger) {
 }
 
 async function getSection(sectionID, logger) {
+  logger.info(`Getting section info for ${sectionID}`);
   await redis.connect();
   const sectionData = await redis.hGetAll(`section-${sectionID}`);
   const todoIDs = await redis.lRange(`section-todos-${sectionData.id}`, 0, -1);
@@ -100,6 +101,7 @@ async function getSections(logger) {
     const todos = todoIDs.map((todoID) => {
       return todosByID.get(todoID);
     });
+    todos.reverse();
 
     const section = new Section(sectionData.name, {
       id: sectionData.id,
