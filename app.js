@@ -282,8 +282,8 @@ async function refreshHome(client, logger, userID) {
     blocks.push({ type: "divider" });
 
     const completedItems = new Set();
-
-    getSections(logger).forEach((section) => {
+    const sections = await getSections(logger);
+    sections.forEach((section) => {
       logger.info(`== ${section.ame}`);
 
       const options = section.todos.map((todo, i) => {
