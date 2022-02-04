@@ -290,7 +290,7 @@ async function refreshHome(client, logger, userID) {
         let [text, description] = todo.text.split("\n");
         const value = `notion-id-${todo.id}`;
 
-        if (todo.checked) {
+        if (todo.complete) {
           text = `~${text.trim()}~`;
           if (description) {
             description = `~${description.trim()}~`;
@@ -308,7 +308,7 @@ async function refreshHome(client, logger, userID) {
           option.description = { type: "mrkdwn", text: description };
         }
 
-        logger.info(`${todo.checked ? "✅" : "◻️"} ${text}`);
+        logger.info(`${todo.complete ? "✅" : "◻️"} ${text}`);
 
         return option;
       });
