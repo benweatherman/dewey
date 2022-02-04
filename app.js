@@ -59,7 +59,7 @@ app.view(/^add_todo_view/, async ({ ack, payload, body, client, logger }) => {
     content += `\n${details}`;
   }
   const response = await notion.blocks.children.append({
-    block_id: section.page.id,
+    block_id: section.pageID,
     children: [
       {
         object: "block",
