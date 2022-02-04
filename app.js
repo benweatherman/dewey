@@ -37,8 +37,8 @@ app.view(/^add_todo_view/, async ({ ack, payload, body, client, logger }) => {
   logger.info("Handling TODO view submission");
   await ack();
 
-  const sectionName = payload.callback_id.replace(/add_todo_view-/, "");
-  const section = SECTIONS.get(sectionName);
+  const sectionID = payload.callback_id.replace(/add_todo_view-/, "");
+  const section = await getSection(sectionID);
   const {
     state: {
       values: {
@@ -94,7 +94,7 @@ app.action("add_todo", async ({ ack, body, payload, client, logger }) => {
       trigger_id: body.trigger_id,
       view: {
         type: "modal",
-        callback_id: `add_todo_view-${section.name}`,
+        callback_id: `add_todo_view-${section.id}`,
         title: {
           type: "plain_text",
           // TODO Can only be 25 characters
