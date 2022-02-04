@@ -1,14 +1,10 @@
-const url = require("url");
 const { Client } = require("@notionhq/client");
 const _redis = require("redis");
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
-
-// Special Redis-to-go handling for redis client
-// https://devcenter.heroku.com/articles/redistogo#using-with-node-js
-const rtg = url.parse(process.env.REDISTOGO_URL);
-const redis = _redis.createClient(rtg.port, rtg.hostname);
-redis.auth(rtg.auth.split(":")[1]);
+const redis = _redis.createClient(process.env.REDISCLOUD_URL, {
+  no_ready_check: true,
+});
 
 redis.on("error", (err) => {
   console.log("Redis error", err);
